@@ -1,0 +1,54 @@
+# This workflow will install Python dependencies and run tests
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# To run locally, 'act' will run the workflow in a Docker container
+
+name: Run get2.py
+
+on:
+  # Triggers the workflow every hour
+  schedule:
+    - cron: "0 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: ">=3.9"
+          cache: "pip" # caching pip dependencies to speed up builds, also try 'pipenv'. See https://github.com/actions/setup-python
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Create config.ini
+        env:
+          student_id: ${{ secrets.student_id }}
+          minerva_pin: ${{ secrets.minerva_pin }}
+        run: |
+          echo "[secrets]" > config.ini
+          echo "student_id = $student_id" >> config.ini
+          echo "minerva_pin = $minerva_pin" >> config.ini
+          cat config.ini
+
+      - name: Run Seatget
+        run: |
+          python get2.py
+
+      - name: Upload HTML pages
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: html_pages
+          path: |
+            ./logins/
+            ./registrations/
+            ./waitlists/
