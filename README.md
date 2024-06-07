@@ -29,9 +29,10 @@ Please follow the instructions below to set up and use the script effectively.
 
    Make sure to use the right (guest) credentials!
    `student_id` should be set to your 9-digit ID number and `minerva_pin` should be set to your Minerva PIN. If you're not sure what those are, use the resources on [Minerva's login page](https://horizon.mcgill.ca/pban1/twbkwbis.P_WWWLogin) to recover them.
+   
    ![signin page](./signin.png)
 
-4. Modify the `courses.ini` file to specify the courses you want to register for. Courses are specified using their term `[YYYYMM]` and their Course Registration Number (CRN), which can be found on [Visual Schedule Builder](https://vsb.mcgill.ca/vsb). Multiple CRNs should be separated by spaces.
+5. Modify the `courses.ini` file to specify the courses you want to register for. Courses are specified using their term `[YYYYMM]` and their Course Registration Number (CRN), which can be found on [Visual Schedule Builder](https://vsb.mcgill.ca/vsb). Multiple CRNs should be separated by spaces.
 
    Example `courses.ini`:
 
@@ -48,7 +49,7 @@ Please follow the instructions below to set up and use the script effectively.
 
    > Fall 2024 is `[202409]`, Winter 2025 is `[202501]`, Summer 2025 is `[202505]`, and so on
 
-5. Install dependencies using the `requirements.txt` file:
+6. Install dependencies using the `requirements.txt` file:
 
    ```bash
    pip install -r requirements.txt
