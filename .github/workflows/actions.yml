@@ -5,9 +5,9 @@
 name: Run get2.py
 
 on:
-  # Triggers the workflow every hour
+  # Triggers the workflow the 10th minute of every hour
   schedule:
-    - cron: "0 * * * *"
+    - cron: "10 * * * *"
 
 permissions:
   contents: read
