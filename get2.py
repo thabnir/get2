@@ -66,6 +66,28 @@ def get_courses_to_waitlist(soup):
     return courses_to_waitlist
 
 
+class CustomFormatter(logging.Formatter):
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    message_format = "%(asctime)s - %(levelname)s - %(message)s"
+
+    FORMATS = {
+        logging.DEBUG: grey + message_format + reset,
+        logging.INFO: grey + message_format + reset,
+        logging.WARNING: yellow + message_format + reset,
+        logging.ERROR: red + message_format + reset,
+        logging.CRITICAL: bold_red + message_format + reset,
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+
 logging.basicConfig(
     filename="get2.log",
     filemode="a",
@@ -73,8 +95,11 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
-logging.info("get2.py started")
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(CustomFormatter())
+logger = logging.getLogger()
+logger.addHandler(stream_handler)
 
 config = configparser.ConfigParser(allow_no_value=True)  # allow comments in the config files
 config.read("config.ini")
@@ -108,7 +133,7 @@ timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 domain = "https://horizon.mcgill.ca"
 login_url = f"{domain}/pban1/twbkwbis.P_ValLogin"
-registration_url = f"{domain}/pban1/bwckcoms.P_Regs"
+registration_base = f"{domain}/pban1/bwckcoms.P_Regs"
 
 with requests.Session() as session:
     logging.info("Attempting to log in...")
@@ -130,13 +155,13 @@ with requests.Session() as session:
     # register for each course one semester at a time
     for semester, crns in course_dict.items():
         # makes independent queries for each semester since that's how the form works
-        base_query_url = f"{registration_url}?term_in={semester}&RSTS_IN=DUMMY&assoc_term_in=DUMMY&CRN_IN=DUMMY&start_date_in=DUMMY&end_date_in=DUMMY&SUBJ=DUMMY&CRSE=DUMMY&SEC=DUMMY&LEVL=DUMMY&CRED=DUMMY&GMOD=DUMMY&TITLE=DUMMY&MESG=DUMMY&REG_BTN=DUMMY"
+        base_query_url = f"{registration_base}?term_in={semester}&RSTS_IN=DUMMY&assoc_term_in=DUMMY&CRN_IN=DUMMY&start_date_in=DUMMY&end_date_in=DUMMY&SUBJ=DUMMY&CRSE=DUMMY&SEC=DUMMY&LEVL=DUMMY&CRED=DUMMY&GMOD=DUMMY&TITLE=DUMMY&MESG=DUMMY&REG_BTN=DUMMY"
         registration_url = base_query_url
         for crn in crns:
             registration_url += f"&RSTS_IN=RW&CRN_IN={crn}&assoc_term_in=&start_date_in=&end_date_in="
         registration_url += "&regs_row=0&wait_row=0&add_row=10&REG_BTN=Submit+Changes"
 
-        logging.info(f"Attempting to register with {registration_url}")
+        logging.info(f"Attempting to register for {semester} at {registration_url}")
         response = follow_refresh(session, lambda query_url=registration_url: session.get(query_url))
 
         with open(f"registrations/register_{timestamp}_{attempt_id}_{semester}.html", "w") as f:
@@ -157,24 +182,26 @@ with requests.Session() as session:
             logging.info(f"Found {len(courses_to_waitlist)} courses to waitlist for {semester}")
             for course in courses_to_waitlist:
                 logging.info(f"Waitlistable course: \"{course['TITLE']}\" with CRN: {course['CRN_IN']}")
+                waitlist_url = base_query_url
+                waitlist = "LW"  # add to waitlist. "RW" is to register normally
+                waitlist_url += (
+                    f"&RSTS_IN={waitlist}&CRN_IN={course['CRN_IN']}&assoc_term_in=&start_date_in=&end_date_in="
+                )
 
-        waitlist = "LW"  # add to waitlist. "RW" is to register normally
-        waitlist_url = base_query_url
-        for course in courses_to_waitlist:
-            waitlist_url += f"&RSTS_IN={waitlist}&CRN_IN={course['CRN_IN']}&assoc_term_in=&start_date_in=&end_date_in="
-
-        waitlist_url += "&regs_row=0&wait_row=0&add_row=10&REG_BTN=Submit+Changes"
-        response = follow_refresh(session, lambda course=course, url=waitlist_url: session.post(url, data=course))
-        # save response to html file with unique name
-        with open(f"waitlists/waitlist_{timestamp}_{attempt_id}_{semester}_{course['CRN_IN']}.html", "w") as f:
-            f.write(response.text)
-            logging.info(f"Saved waitlist attempt response to file {f.name}")
-        if response.status_code != 200:
-            logging.error(
-                f"Request to join waitlist for {course['CRN_IN']} failed with status code {response.status_code}"
-            )
-            exit(1)
-        logging.info(f"Joined waitlist for {course['TITLE']} with CRN: {course['CRN_IN']} in semester {semester}")
+                waitlist_url += "&regs_row=0&wait_row=0&add_row=10&REG_BTN=Submit+Changes"
+                response = follow_refresh(session, lambda data=course, url=waitlist_url: session.post(url, data=data))
+                # save response to html file with unique name
+                with open(f"waitlists/waitlist_{timestamp}_{attempt_id}_{semester}_{course['CRN_IN']}.html", "w") as f:
+                    f.write(response.text)
+                    logging.info(f"Saved waitlist attempt response to file {f.name}")
+                if response.status_code != 200:
+                    logging.error(
+                        f"Request to join waitlist for {course['CRN_IN']} failed with status code {response.status_code}"
+                    )
+                    exit(1)
+                logging.info(
+                    f"Attempted to join waitlist for {course['TITLE']} with CRN: {course['CRN_IN']} in semester {semester}"
+                )
 
 
 logging.info("get2.py finished")
