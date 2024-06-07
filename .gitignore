@@ -3,15 +3,13 @@ token.json
 config.ini
 screenshots/*
 .DS_Store
-my.secrets
+.secrets
 ruff.toml
 
 # Generated data and logs
-logins/
-registrations/
-waitlists/
 get2.log
 seatget.log
+artifacts/
 
 # Ruff Cache
 .ruff_cache/
