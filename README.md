@@ -8,7 +8,7 @@ Please follow the instructions below to set up and use the script effectively.
 1. Clone the GitHub repository to your local machine:
 
    ```bash
-   git clone <repository_url>
+   git clone https://github.com/thabnir/get2.git
    ```
 
 2. Navigate to the repository directory:
